@@ -1,6 +1,6 @@
 const express = require('express')
 const router = express.Router()
-const { protect, allowRoles } = require('../middleware/authMiddleware')
+const { protect, allowRoles } = require('../middlewares/authMiddleware')
 const { createJobOrder, getJobOrders, updateJobOrderStatus, cancelJobOrder } = require('../controllers/jobOrderController')
 
 router.post('/', protect, allowRoles('sales', 'manager'), createJobOrder)
