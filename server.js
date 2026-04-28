@@ -17,6 +17,10 @@ app.get('/',(req,res)=>{
 
 app.use('/api/auth', require('./src/routes/authRoutes'))
 app.use('/api/job-orders', require('./src/routes/jobOrders'))
+app.use('/api/inventory', require('./src/routes/inventoryRoutes'))
+app.use('/api/production', require('./src/routes/productionRoutes'))
+app.use('/api/invoices', require('./src/routes/invoiceRoutes'))
+app.use('/api/reports', require('./src/routes/reportRoutes'))
 
 const PORT = process.env.PORT || 5000
 
