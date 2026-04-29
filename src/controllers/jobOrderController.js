@@ -63,10 +63,17 @@ const cancelJobOrder = async (req, res) => {
 
   // Return materials to stock
   for (let item of order.materialsUsed) {
-    const material = await Material.findById(item.material)
-    material.quantity_in_stock += item.quantity
-    await material.save()
-  }
+    const cutOff = await CutOff.findById({ material: item.material, status: 'used'})
+    if(cutOff){
+      cutOff.status = 'available'
+      await cutOff.save()
+    } else{
+      const material = await Material.findById(item.material)
+      if(material){
+        material.quantity_in_stock += item.quantity
+        await material.save()
+    }
+  }}
 
   order.status = 'cancelled'
   await order.save()

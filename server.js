@@ -9,6 +9,10 @@ connectDB()
 const app = express()
 app.use(express.json())
 
+process.on('unhandledRejection', (err) => {
+    console.error(`Unhandled Rejection:`, err.message)
+    process.exit(1)
+})
 
 app.get('/',(req,res)=>{
     res.json({message: 'IWMS is running'})
@@ -21,9 +25,10 @@ app.use('/api/inventory', require('./src/routes/inventoryRoutes'))
 app.use('/api/production', require('./src/routes/productionRoutes'))
 app.use('/api/invoices', require('./src/routes/invoiceRoutes'))
 app.use('/api/reports', require('./src/routes/reportRoutes'))
+app.use('api/customer'), require('./src/routes/customerRoutes')
 
 const PORT = process.env.PORT || 5000
 
-app.listen(PORT,'localhost',()=>{
+app.listen(PORT ,()=>{
     console.log("The Server Started and RBNA YSTR")
 })
