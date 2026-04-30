@@ -10,20 +10,35 @@ const generateInvoice = async (req, res) => {
   const existingInvoice = await Invoice.findOne({ jobOrder: jobOrderId })
   if (existingInvoice) return res.status(400).json({ message: 'Invoice already exists' })
 
-  let total = 0
+  // حساب تكلفة المواد
+  let materialsCost = 0
   for (let item of order.materialsUsed) {
     if (item.material?.cost_per_unit) {
-      total += item.material.cost_per_unit * item.quantity
+      materialsCost += item.material.cost_per_unit * item.quantity
     }
   }
 
+
+  const logs = await ProductionLog.find({ jobOrder: jobOrderId, status: 'completed' })
+    .populate('technician', 'hourlyRate')
+  let laborCost = 0
+  for (const log of logs) {
+    if (log.endTime && log.technician?.hourlyRate) {
+      const hours = (log.endTime - log.startTime) / 3600000
+      laborCost += hours * log.technician.hourlyRate
+    }
+  }
+
+  const total = materialsCost + laborCost
+
   order.totalCost = total
-  order.status = 'completed'
   await order.save()
 
   const invoice = await Invoice.create({
     jobOrder: jobOrderId,
     amount: total,
+    materialsCost,
+    laborCost,
     paymentStatus: 'unpaid'
   })
 
@@ -46,6 +61,14 @@ const updatePayment = async (req, res) => {
   }
 
   await invoice.save()
+  // في updatePayment — زود الـ audit log:
+  invoice.auditLog.push({
+    action: 'payment_updated',
+    changedBy: req.user._id,
+    oldValue: { amountPaid: invoice.amountPaid, status: invoice.paymentStatus },
+    newValue:  { amountPaid, status: newStatus },
+    timestamp: new Date()
+  })
   res.json(invoice)
 }
 

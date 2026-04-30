@@ -6,7 +6,7 @@ const {createCustomer, getCustomer, getCustomerByID, updateCustomer } = require(
 router.post('/', protect, allowRoles('sales','manager'), createCustomer)
 router.get('/', protect, getCustomer)
 router.get('/:id', protect, getCustomerByID)
-router.pathc('/:id', protect, allowRoles('sales','manager'), updateCustomer)
+router.patch('/:id', protect, allowRoles('sales','manager'), updateCustomer)
 
 
 module.exports = router

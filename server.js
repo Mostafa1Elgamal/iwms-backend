@@ -25,7 +25,8 @@ app.use('/api/inventory', require('./src/routes/inventoryRoutes'))
 app.use('/api/production', require('./src/routes/productionRoutes'))
 app.use('/api/invoices', require('./src/routes/invoiceRoutes'))
 app.use('/api/reports', require('./src/routes/reportRoutes'))
-app.use('api/customer'), require('./src/routes/customerRoutes')
+app.use('api/customer', require('./src/routes/customerRoutes'))
+app.use('api/attendance', require('./src/routes/attendanceRoutes'))
 
 const PORT = process.env.PORT || 5000
 
