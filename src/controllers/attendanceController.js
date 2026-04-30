@@ -15,7 +15,7 @@ const checkIn = async (req, res) => {
 }
 
 const checkOut = async (req, res) => {
-  const today = new Date().toISOString.split('T')[0]
+  const today = new Date().toISOString().split('T')[0]
   const record = await Attendance.findOne({ employee: req.user._id, date: today })
   if (!record) return res.status(404).json({ message: 'No check-in found for today' })
   if (record.checkOut) return res.status(400).json({ message: 'Already checked out' })

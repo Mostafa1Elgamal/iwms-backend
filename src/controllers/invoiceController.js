@@ -1,5 +1,7 @@
 const Invoice = require('../models/Invoice')
 const JobOrder = require('../models/JobOrder')
+const ProductionLog = require('../models/ProductionLog')
+
 
 const generateInvoice = async (req, res) => {
   const { jobOrderId } = req.body
