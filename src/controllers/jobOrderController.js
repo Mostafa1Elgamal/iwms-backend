@@ -7,25 +7,66 @@ const createJobOrder = async (req, res) => {
   const { customer, dimensions, materialsUsed, deliveryDate, notes } = req.body
 
   // 1. Check inventory
+  let processedMaterials = [];
   for (let item of materialsUsed) {
     const material = await Material.findById(item.material)
     if (!material) return res.status(404).json({ message: `Material not found` })
 
-    // Check cutoffs first
-    const cutoff = await CutOff.findOne({ material: item.material, status: 'available' })
-    if (cutoff) {
-      cutoff.status = 'used'
-      await cutoff.save()
-    } else {
-      // Check main stock
-      if (material.quantity_in_stock < item.quantity)
-        return res.status(400).json({ message: `Insufficient stock for ${material.name}` })
-      material.quantity_in_stock -= item.quantity
-      await material.save()
+    let cutOffsToUse =[];
+    let mainStockNeeded = 0;
+    const availableCutoff = await CutOff.findOne({
+      material: item.material,
+      status: 'available',
+      'dimensions.height':{ $gte: dimensions.height },
+      'dimensions.width': { $gte: dimensions.width },
+      'dimensions.thickness': { $gte: dimensions.thickness }
+        
+    }).limit(item.quantity)
+
+    cutOffsToUse = availableCutoff.map(c => c._id)
+    mainStockNeeded = item.quantity - cutOffsToUse.length
+
+    if (mainStockNeeded > 0 && material.quantity_in_stock < mainStockNeeded){
+      return res.status(400).json({ message: `Insufficient stock for ${material.name}` })
     }
+    processedMaterials.push({
+      materialId: item.material,
+      materialDoc: material,
+      cutOffsToUse,
+      mainStockNeeded
+    })
+    
   }
 
-  // 2. Create order
+  let finalMaterialsUsed = [];
+
+  for (let processed of processedMaterials){
+    if (processsed.cutOffsToUse.length > 0){
+      await CuttOff.updateMany(
+        { _id: {$in: processed.cutOffsToUse } },
+        { $set: { status: 'used' } }
+      )
+    }
+      if(processed.mainStockNeeded > 0){
+      processed.materialDoc.quantity_in_stock -= processed.mainStockNeeded
+      await processed.materialDoc.save()
+      
+      if(processed.materialDoc.quantity_in_stock <= processed.materialDoc.min.threshold) {
+        console.log(`{Alert ybny}: Material ${processed.materialDoc.name} is tunning low`)
+      }
+    }
+
+
+    finalMaterialsUsed.push({
+      material: processed.materialId,
+      quantity: processed.cutOffsToUse.length + processed.mainStockNeeded,
+      cutOffsUsed: processed.cutOffsToUse,
+      mainStockDeducted: processed.mainStockNeeded
+    })
+
+  }
+
+  
   const order = await JobOrder.create({
     customer, dimensions, materialsUsed,
     deliveryDate, notes,

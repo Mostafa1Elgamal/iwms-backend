@@ -5,7 +5,9 @@ const jobOrderSchema = new mongoose.Schema({
   dimensions: { height: Number, width: Number },
   materialsUsed: [{
     material: { type: mongoose.Schema.Types.ObjectId, ref: 'Material' },
-    quantity: Number
+    quantity: {Number, required: true},
+    cutOffUsed: [{ type: mongoose.Schema.Types.ObjectId, ref: 'CutOff'}],
+    mainStockDeducted: { type: Number, default: 0}
   }],
   status: {
     type: String,
