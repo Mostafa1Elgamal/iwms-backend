@@ -10,6 +10,7 @@ const productionLogSchema = new mongoose.Schema({
   technician: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   startTime: { type: Date, default: Date.now },
   endTime: Date,
+  durationMinutes: { type: Number, default: 0},
   status: { type: String, enum: ['in-progress', 'completed'], default: 'in-progress' }
 }, { timestamps: true })
 

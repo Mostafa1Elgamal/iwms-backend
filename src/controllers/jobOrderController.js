@@ -14,7 +14,7 @@ const createJobOrder = async (req, res) => {
 
     let cutOffsToUse =[];
     let mainStockNeeded = 0;
-    const availableCutoff = await CutOff.findOne({
+    const availableCutOffs = await CutOff.find({
       material: item.material,
       status: 'available',
       'dimensions.height':{ $gte: dimensions.height },
@@ -23,7 +23,7 @@ const createJobOrder = async (req, res) => {
         
     }).limit(item.quantity)
 
-    cutOffsToUse = availableCutoff.map(c => c._id)
+    cutOffsToUse = availableCutOffs.map(c => c._id)
     mainStockNeeded = item.quantity - cutOffsToUse.length
 
     if (mainStockNeeded > 0 && material.quantity_in_stock < mainStockNeeded){
@@ -41,8 +41,8 @@ const createJobOrder = async (req, res) => {
   let finalMaterialsUsed = [];
 
   for (let processed of processedMaterials){
-    if (processsed.cutOffsToUse.length > 0){
-      await CuttOff.updateMany(
+    if (processed.cutOffsToUse.length > 0){
+      await CutOff.updateMany(
         { _id: {$in: processed.cutOffsToUse } },
         { $set: { status: 'used' } }
       )
@@ -51,8 +51,8 @@ const createJobOrder = async (req, res) => {
       processed.materialDoc.quantity_in_stock -= processed.mainStockNeeded
       await processed.materialDoc.save()
       
-      if(processed.materialDoc.quantity_in_stock <= processed.materialDoc.min.threshold) {
-        console.log(`{Alert ybny}: Material ${processed.materialDoc.name} is tunning low`)
+      if(processed.materialDoc.quantity_in_stock <= processed.materialDoc.min_threshold) {
+        console.log(`{Alert ybny}: Material ${processed.materialDoc.name} is running low`)
       }
     }
 
@@ -60,7 +60,7 @@ const createJobOrder = async (req, res) => {
     finalMaterialsUsed.push({
       material: processed.materialId,
       quantity: processed.cutOffsToUse.length + processed.mainStockNeeded,
-      cutOffsUsed: processed.cutOffsToUse,
+      cutOffUsed: processed.cutOffsToUse,
       mainStockDeducted: processed.mainStockNeeded
     })
 
@@ -68,7 +68,7 @@ const createJobOrder = async (req, res) => {
 
   
   const order = await JobOrder.create({
-    customer, dimensions, materialsUsed,
+    customer, dimensions, materialsUsed: finalMaterialsUsed,
     deliveryDate, notes,
     createdBy: req.user._id
   })
@@ -84,7 +84,7 @@ const createJobOrder = async (req, res) => {
 const getJobOrders = async (req, res) => {
   const { status } = req.query
   const filter = status ? { status } : {}
-  const orders = await JobOrder.find(filter).populate('customer').populate('materialsUsed.material')
+  const orders = await JobOrder.find(filter).populate('customer').populate('materialsUsed.material').populate('materialsUsed.cutOffUsed')
   res.json(orders)
 }
 
@@ -104,21 +104,27 @@ const cancelJobOrder = async (req, res) => {
 
   // Return materials to stock
   for (let item of order.materialsUsed) {
-    const cutOff = await CutOff.findById({ material: item.material, status: 'used'})
-    if(cutOff){
-      cutOff.status = 'available'
-      await cutOff.save()
-    } else{
-      const material = await Material.findById(item.material)
-      if(material){
-        material.quantity_in_stock += item.quantity
-        await material.save()
+    if(item.cutOffUsed && item.cutOffUsed.length > 0){
+      await CutOff.updateMany(
+        { _id: { $in: item.cutOffUsed } },
+        { $set: { status: 'available' } }
+      )
     }
-  }}
 
+     
+      if(item.mainStockDeducted > 0){
+        await Material.findByIdAndUpdate(
+          item.material,
+          { $inc: { quantity_in_stock: item.mainStockDeducted } }
+        )
+    }
+  }
   order.status = 'cancelled'
   await order.save()
   res.json({ message: 'Order cancelled and materials returned' })
 }
+
+
+ 
 
 module.exports = { createJobOrder, getJobOrders, updateJobOrderStatus, cancelJobOrder }
